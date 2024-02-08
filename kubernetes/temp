@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-hook
+  labels:
+    app: app-hook
+    service: app-hook
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  selector:
+    app: app-hook
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bank-app-hook
+  labels:
+    account: app-hook
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-hook-v1
+  labels:
+    app: app-hook
+    version: v1
+    update: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-hook
+      version: v1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+      labels:
+        app: app-hook
+        version: v1
+    spec:
+      serviceAccountName: bank-app-hook
+      containers:
+      - name: app-hook
+        image: fabiojdluz/app-hook:latest
+        ports:
+          - containerPort: 80
+        imagePullPolicy: Always
+        

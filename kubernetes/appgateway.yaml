@@ -1,0 +1,226 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: app-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: httpbin-credential 
+    hosts:
+    - "evostack.app.com"
+
+
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: app-application-gateway
+  namespace: istio-system
+spec:
+  gatewayClassName: istio
+  listeners:
+  - name: https
+    hostname: "evostack.app.com"
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: httpbin-credential
+    allowedRoutes:
+      namespaces:
+        from: Selector
+        selector:
+          matchLabels:
+            kubernetes.io/metadata.name: default
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: app-internal-application-gateway-virtualservice
+spec:
+  hosts:
+  - "evostack.app.com"
+  gateways:
+  - istio-system/app-gateway
+  http:
+    - match:
+        - uri:
+            prefix: "/app-receiver/"
+      rewrite:
+        uri: "/"
+      route:
+        - destination:
+            host: app-receiver
+            port:
+              number: 80
+
+    - match:
+        - uri:
+            exact: "/app-receiver/openapi.json"
+      rewrite:
+        uri: "/openapi.json"
+      route:
+        - destination:
+            host: app-receiver
+            port:
+              number: 80
+          
+    - match:
+        - uri:
+            exact: "/app-sender/openapi.json"
+      rewrite:
+        uri: "/openapi.json"
+      route:
+        - destination:
+            host: app-sender
+            port:
+              number: 80
+
+    - match:
+        - uri:
+            prefix: "/app-sender/"
+      rewrite:
+        uri: "/"
+      route:
+        - destination:
+            host: app-sender
+            port:
+              number: 80
+
+    - match:
+        - uri:
+            prefix: "/app-hook/"
+      rewrite:
+        uri: "/"
+      route:
+        - destination:
+            host: app-hook
+            port:
+              number: 80
+
+    - match:
+        - uri:
+            exact: "/app-orchestrating/openapi.json"
+      rewrite:
+        uri: "/openapi.json"
+      route:
+        - destination:
+            host: app-orchestrating
+            port:
+              number: 80
+
+    - match:
+        - uri:
+            prefix: "/app-orchestrating/"
+      rewrite:
+        uri: "/"
+      route:
+        - destination:
+            host: app-orchestrating
+            port:
+              number: 80
+
+  # ... other routes ...
+
+
+# ---
+# apiVersion: networking.istio.io/v1alpha3
+# kind: VirtualService
+# metadata:
+#   name: app-sender-virtualservic
+# spec:
+#   hosts:
+#   - "evostack.app.com"
+#   gateways:
+#   - istio-system/app-gateway
+#   http:
+#     - match:
+#       - uri:
+#           prefix: "app-sender"
+#       rewrite:
+#         uri: "/"
+#       route:
+#       - destination:
+#           host: app-sender
+#           port:
+#             number: 80
+
+
+# ---
+
+
+# apiVersion: networking.istio.io/v1alpha3
+# kind: VirtualService
+# metadata:
+#   name: app-receiver-virtualservice
+# spec:
+#   hosts:
+#   - "evostack.app.com"
+#   gateways:
+#   - istio-system/app-gateway
+#   http:
+#   - match:
+#     - uri:
+#         prefix: "/receiver"
+#     rewrite:
+#       uri: "/"
+#     route:
+#     - destination:
+#         host: app-receiver
+#         port:
+#           number: 80
+
+
+# ---
+# apiVersion: networking.istio.io/v1alpha3
+# kind: VirtualService
+# metadata:
+#   name: app-orchestrating-virtualservice
+# spec:
+#   hosts:
+#   - "evostack.app.com"
+#   gateways:
+#   - istio-system/app-gateway
+#   http:
+#   - match:
+#     - uri:
+#         prefix: "/orchestrating"
+#     rewrite:
+#       uri: "/"
+#     route:
+#     - destination:
+#         host: app-orchestrating
+#         port:
+#           number: 80
+
+---
+# apiVersion: networking.istio.io/v1alpha3
+# kind: VirtualService
+# metadata:
+#   name: app-internal-application-gateway-virtualservice
+# spec:
+#   hosts:
+#   - "evostack.app.com"
+#   gateways:
+#   - istio-system/app-gateway
+#   http:
+#   - match:
+#     - uri:
+#         prefix: "/"
+#     rewrite:
+#       uri: "/"
+#     route:
+#     - destination:
+#         host: internal-application-gateway
+#         port:
+#           number: 80
+ 

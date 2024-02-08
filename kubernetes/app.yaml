@@ -1,0 +1,303 @@
+# Copyright Istio Authors
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+##################################################################################################
+# This file defines the services, service accounts, and deployments for the bank sample.
+#
+# To apply all 4 bank services, their corresponding service accounts, and deployments:
+#
+#   kubectl apply -f samples/bank/platform/kube/bank.yaml
+#
+# Alternatively, you can deploy any resource separately:
+#
+#   kubectl apply -f samples/bank/platform/kube/bank.yaml -l service=app-orchestrating # app-orchestrating Service
+#   kubectl apply -f samples/bank/platform/kube/bank.yaml -l account=app-orchestrating # app-orchestrating ServiceAccount
+#   kubectl apply -f samples/bank/platform/kube/bank.yaml -l app=app-orchestrating,version=v3 # app-orchestrating-v3 Deployment
+##################################################################################################
+
+##################################################################################################
+# App sender
+##################################################################################################
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-sender
+  labels:
+    app: app-sender
+    service: app-sender
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  selector:
+    app: app-sender
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bank-app-sender
+  labels:
+    account: app-sender
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-sender-v1
+  labels:
+    app: app-sender
+    version: v1
+    update: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-sender
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: app-sender
+        version: v1
+    spec:
+      serviceAccountName: bank-app-sender
+      containers:
+      - name: app-sender
+        image: fabiojdluz/app-sender:v4
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+---
+##################################################################################################
+# App receiver
+##################################################################################################
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-receiver
+  labels:
+    app: app-receiver
+    service: app-receiver
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  selector:
+    app: app-receiver
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bank-app-receiver
+  labels:
+    account: app-receiver
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-receiver-v1
+  labels:
+    app: app-receiver
+    version: v1
+    update: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-receiver
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: app-receiver
+        version: v1
+    spec:
+      serviceAccountName: bank-app-receiver
+      containers:
+      - name: app-receiver
+        image: fabiojdluz/app-receiver:v2
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+---
+##################################################################################################
+# App orchestrating
+##################################################################################################
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-orchestrating
+  labels:
+    app: app-orchestrating
+    service: app-orchestrating
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  selector:
+    app: app-orchestrating
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bank-app-orchestrating
+  labels:
+    account: app-orchestrating
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-orchestrating-v1
+  labels:
+    app: app-orchestrating
+    version: v1
+    update: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-orchestrating
+      version: v1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+      labels:
+        app: app-orchestrating
+        version: v1
+    spec:
+      serviceAccountName: bank-app-orchestrating
+      containers:
+      - name: app-orchestrating
+        image: fabiojdluz/app-orchestrating:v2
+        ports:
+          - containerPort: 80
+        imagePullPolicy: Always
+        
+
+---
+##################################################################################################
+# App Gateay
+##################################################################################################
+apiVersion: v1
+kind: Service
+metadata:
+  name: internal-application-gateway
+  labels:
+    app: internal-application-gateway
+    service: internal-application-gateway
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  selector:
+    app: internal-application-gateway
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bank-internal-application-gateway
+  labels:
+    account: internal-application-gateway
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: internal-application-gateway-v1
+  labels:
+    app: internal-application-gateway
+    version: v1
+    update: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: internal-application-gateway
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: internal-application-gateway
+        version: v1
+    spec:
+      serviceAccountName: bank-internal-application-gateway
+      containers:
+      - name: internal-application-gateway
+        image: fabiojdluz/api-gateway:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+---
+##################################################################################################
+# App Hook
+##################################################################################################
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-hook
+  labels:
+    app: app-hook
+    service: app-hook
+spec:
+  ports:
+  - port: 80
+    targetPort: 3000
+    name: http
+  selector:
+    app: app-hook
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bank-app-hook
+  labels:
+    account: app-hook
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-hook-v1
+  labels:
+    app: app-hook
+    version: v1
+    update: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-hook
+      version: v1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+      labels:
+        app: app-hook
+        version: v1
+    spec:
+      serviceAccountName: bank-app-hook
+      containers:
+      - name: app-hook
+        image: fabiojdluz/app-hook:v1
+        ports:
+          - containerPort: 3000
+        imagePullPolicy: Always
+        
